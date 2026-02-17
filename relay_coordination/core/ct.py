@@ -66,6 +66,9 @@ class CT:
         self.index = len(net.protection['ct'])
         net.protection['ct'].append(self)
         
+        # State for warning suppression
+        self._warned_saturation = False
+        
     def _parse_iec_class(self):
         """Parse IEC accuracy class string (e.g., '5P20')"""
         try:
@@ -94,8 +97,9 @@ class CT:
         
         # Check if within accuracy limit
         i_limit = self.secondary_rating * self.alf
-        if i_secondary > i_limit:
+        if i_secondary > i_limit and not self._warned_saturation:
             warnings.warn(f"{self.name}: Secondary current {i_secondary:.2f}A exceeds accuracy limit {i_limit:.2f}A - CT may saturate")
+            self._warned_saturation = True
         
         return i_secondary
     
