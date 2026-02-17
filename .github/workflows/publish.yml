@@ -1,8 +1,10 @@
 name: Upload Python Package
 
+# 1. Mengubah pemicu agar berjalan otomatis saat push ke branch 'main'
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - main 
 
 permissions:
   contents: read
@@ -29,4 +31,5 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
       run: |
         python -m build
-        twine upload dist/*
+        # 2. Menambahkan --skip-existing untuk mencegah error jika versi belum diganti
+        twine upload --skip-existing dist/*

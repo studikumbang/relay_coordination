@@ -15,7 +15,7 @@ Professional ETAP-style protection coordination simulation library for Pandapowe
 pip install relay_coordination
 ```
 
-## API Reference
+## Reference
 
 ### 1. Device Creation
 
