@@ -16,9 +16,13 @@ def plot_tcc_curves(relays: List,
                     fault_type: str = "phase",
                     title: str = "Time-Current Coordination Curve",
                     filename: str = None,
-                    figsize: tuple = (12, 8)):
+                    figsize: tuple = (12, 8),
+                    x_scale: str = "log",
+                    y_scale: str = "log",
+                    xlim: any = None,
+                    ylim: any = (0.01, 100)):
     """
-    Plot TCC curves for multiple relays on log-log scale
+    Plot TCC curves for multiple relays
     
     Parameters:
     -----------
@@ -28,13 +32,25 @@ def plot_tcc_curves(relays: List,
     fault_type : str - "phase" or "ground"
     title : str - Plot title
     filename : str - Save plot to file (optional)
+    figsize : tuple - Figure size (width, height)
+    x_scale : str - X-axis scale ("log", "linear")
+    y_scale : str - Y-axis scale ("log", "linear")
+    xlim : tuple or "auto" - X-axis limits (min, max) or "auto"
+    ylim : tuple or "auto" - Y-axis limits (min, max) or "auto"
     """
     
-    # Create current range (log-spaced)
-    current_range = np.logspace(np.log10(current_min), np.log10(current_max), 500)
+    # Create current range (log-spaced or linear)
+    if x_scale == "log":
+        current_range = np.logspace(np.log10(current_min), np.log10(current_max), 500)
+    else:
+        current_range = np.linspace(current_min, current_max, 500)
     
     # Create figure
     fig, ax = plt.subplots(figsize=figsize)
+    
+    # Set scales
+    ax.set_xscale(x_scale)
+    ax.set_yscale(y_scale)
     
     # Color palette
     colors = plt.cm.tab10(np.linspace(0, 1, len(relays)))
@@ -62,8 +78,8 @@ def plot_tcc_curves(relays: List,
         # Plot curve (excluding instantaneous portion)
         valid = ~np.isnan(times) & (times > 0.01)  # Filter out instantaneous trips
         if np.any(valid):
-            ax.loglog(current_range[valid], times[valid], 
-                     color=color, linewidth=2.5, label=curve_label)
+            ax.plot(current_range[valid], times[valid], 
+                    color=color, linewidth=2.5, label=curve_label)
         
         # Plot instantaneous element (50/50N)
         if fault_type == "phase" and relay.phase_inst_enabled and relay.phase_inst_pickup:
@@ -85,44 +101,54 @@ def plot_tcc_curves(relays: List,
     ax.grid(True, which='both', alpha=0.3, linestyle='-', linewidth=0.5)
     ax.legend(loc='upper right', fontsize=9, framealpha=0.9)
     
-    # Automatic axis limits based on data
-    # Find the minimum pickup current and maximum fault current from all relays
-    min_pickup = float('inf')
-    max_inst_pickup = 0
-    
-    for relay in relays:
-        if fault_type == "phase":
-            if relay.phase_pickup:
-                min_pickup = min(min_pickup, relay.phase_pickup)
-            if relay.phase_inst_pickup:
-                max_inst_pickup = max(max_inst_pickup, relay.phase_inst_pickup)
-        else:  # ground
-            if relay.ground_pickup:
-                min_pickup = min(min_pickup, relay.ground_pickup)
-            if relay.ground_inst_pickup:
-                max_inst_pickup = max(max_inst_pickup, relay.ground_inst_pickup)
-    
-    # Set intelligent limits
-    if min_pickup != float('inf'):
-        x_min = min_pickup * 0.5  # 50% below minimum pickup
+    # Handle X-limits
+    if xlim == "auto":
+        pass  # Let matplotlib autoscaling work
+    elif xlim is not None:
+        ax.set_xlim(xlim)
     else:
-        x_min = current_min
-    
-    if max_inst_pickup > 0:
-        x_max = max_inst_pickup * 2.0  # 2x above max instantaneous
-    else:
-        x_max = current_max
-    
-    # Ensure we don't violate parameter limits
-    x_min = max(x_min, current_min)
-    x_max = min(x_max, current_max)
-    
-    ax.set_xlim(x_min, x_max)
-    ax.set_ylim(0.01, 100)
-    
-    # Add standard time labels on y-axis
-    ax.set_yticks([0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100])
-    ax.yaxis.set_major_formatter(ScalarFormatter())
+        # Automatic intelligent limits (default behavior)
+        min_pickup = float('inf')
+        max_inst_pickup = 0
+        
+        for relay in relays:
+            if fault_type == "phase":
+                if relay.phase_pickup:
+                    min_pickup = min(min_pickup, relay.phase_pickup)
+                if relay.phase_inst_pickup:
+                    max_inst_pickup = max(max_inst_pickup, relay.phase_inst_pickup)
+            else:  # ground
+                if relay.ground_pickup:
+                    min_pickup = min(min_pickup, relay.ground_pickup)
+                if relay.ground_inst_pickup:
+                    max_inst_pickup = max(max_inst_pickup, relay.ground_inst_pickup)
+        
+        # Set intelligent limits
+        if min_pickup != float('inf'):
+            x_min = min_pickup * 0.5
+        else:
+            x_min = current_min
+        
+        if max_inst_pickup > 0:
+            x_max = max_inst_pickup * 2.0
+        else:
+            x_max = current_max
+        
+        x_min = max(x_min, current_min)
+        x_max = min(x_max, current_max)
+        
+        ax.set_xlim(x_min, x_max)
+
+    # Handle Y-limits
+    if ylim == "auto":
+        pass  # Let matplotlib autoscaling work
+    elif ylim is not None:
+        ax.set_ylim(ylim)
+        
+        # Add standard time labels if we are in expected TCC range
+        if ylim == (0.01, 100):
+            ax.set_yticks([0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100])
+            ax.yaxis.set_major_formatter(ScalarFormatter())
     
     plt.tight_layout()
     

@@ -30,7 +30,7 @@ def run_sc_analysis(net, export_csv: bool = True, check_breakers: bool = True, o
             os.makedirs(output_dir)
 
     import pandapower.shortcircuit as sc
-    from relay_coordination.analysis.reports import export_sc_report, export_breaker_adequacy
+    from relay_coordination.analysis.reports import export_sc_report, export_breaker_adequacy, export_ct_adequacy
     
     print("\n" + "="*80)
     print("SHORT CIRCUIT ANALYSIS (IEC 60909)")
@@ -58,6 +58,28 @@ def run_sc_analysis(net, export_csv: bool = True, check_breakers: bool = True, o
                     status = '✓ OK' if adequate else '✗ UPGRADE'
                     
                     print(f"{cb.name:<15} {bus_name:<20} {ikss:<12.2f} {cb.interrupting_rating_ka_sym:<12.2f} {status:<10}")
+
+        # Check CT Saturation
+        if check_breakers and hasattr(net, 'protection') and 'ct' in net.protection:
+            print("\nCT Saturation Check:")
+            print(f"{'CT Name':<15} {'Bus':<20} {'Fault (kA)':<12} {'Limit (A)':<12} {'Status':<10}")
+            print("-" * 75)
+            
+            for ct in net.protection['ct']:
+                bus_idx = ct.bus
+                if bus_idx < len(net.res_bus_sc):
+                    ikss_ka = net.res_bus_sc.at[bus_idx, 'ikss_ka']
+                    bus_name = net.bus.at[bus_idx, 'name']
+                    
+                    # Calculate limits
+                    i_primary = ikss_ka * 1000.0
+                    i_secondary = ct.secondary_current(i_primary)
+                    i_limit = ct.secondary_rating * ct.alf
+                    
+                    adequate = i_secondary <= i_limit
+                    status = '✓ OK' if adequate else '✗ SATURATES'
+                    
+                    print(f"{ct.name:<15} {bus_name:<20} {ikss_ka:<12.2f} {i_limit:<12.2f} {status:<10}")
         
         # Export CSV files
         if export_csv:
@@ -68,6 +90,10 @@ def run_sc_analysis(net, export_csv: bool = True, check_breakers: bool = True, o
             if check_breakers and hasattr(net, 'protection') and 'cb' in net.protection:
                 breaker_file = os.path.join(output_dir, 'breaker_adequacy.csv')
                 export_breaker_adequacy(net, breaker_file)
+                
+            if check_breakers and hasattr(net, 'protection') and 'ct' in net.protection:
+                ct_file = os.path.join(output_dir, 'ct_adequacy.csv')
+                export_ct_adequacy(net, ct_file)
         
         return {
             'converged': True,

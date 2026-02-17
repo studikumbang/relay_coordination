@@ -142,3 +142,49 @@ def export_breaker_adequacy(net, filename: str):
     df = pd.DataFrame(data)
     df.to_csv(filename, index=False)
     print(f"✓ Breaker adequacy report exported to {filename}")
+
+
+def export_ct_adequacy(net, filename: str):
+    """
+    Export CT adequacy (saturation) check results to CSV
+    
+    Parameters:
+    -----------
+    net : pandapower network
+    filename : str - Output CSV filename
+    """
+    if not hasattr(net, 'protection') or 'ct' not in net.protection:
+        print("No CTs found in network")
+        return
+    
+    if not hasattr(net, 'res_bus_sc'):
+        print("No short circuit results found. Run short circuit analysis first.")
+        return
+    
+    data = []
+    for ct in net.protection['ct']:
+        bus_idx = ct.bus
+        if bus_idx < len(net.res_bus_sc):
+            ikss_ka = net.res_bus_sc.at[bus_idx, 'ikss_ka']
+            i_primary = ikss_ka * 1000.0
+            
+            # Simple saturation check
+            i_secondary = ct.secondary_current(i_primary)
+            i_limit = ct.secondary_rating * ct.alf
+            
+            adequate = i_secondary <= i_limit
+            
+            data.append({
+                'CT Name': ct.name,
+                'Bus': net.bus.at[bus_idx, 'name'],
+                'Fault Current (kA)': f"{ikss_ka:.2f}",
+                'CT Ratio': f"{ct.primary_rating}/{ct.secondary_rating}",
+                'Accuracy Class': ct.accuracy_class_iec,
+                'Sec. Current (A)': f"{i_secondary:.2f}",
+                'Sec. Limit (A)': f"{i_limit:.2f}",
+                'Adequate': 'Yes' if adequate else 'No (Saturates)'
+            })
+    
+    df = pd.DataFrame(data)
+    df.to_csv(filename, index=False)
+    print(f"✓ CT adequacy report exported to {filename}")

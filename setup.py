@@ -8,7 +8,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="relay_coordination",
-    version="1.0.4",
+    version="1.0.5",
     author="Relay Coordination Team",
     description="ETAP-style relay coordination simulation for pandapower",
     long_description=long_description,
