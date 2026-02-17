@@ -15,7 +15,8 @@ def plot_tcc_curves(relays: List,
                     current_max: float = 10000,
                     fault_type: str = "phase",
                     title: str = "Time-Current Coordination Curve",
-                    filename: str = None):
+                    filename: str = None,
+                    figsize: tuple = (12, 8)):
     """
     Plot TCC curves for multiple relays on log-log scale
     
@@ -33,7 +34,7 @@ def plot_tcc_curves(relays: List,
     current_range = np.logspace(np.log10(current_min), np.log10(current_max), 500)
     
     # Create figure
-    fig, ax = plt.subplots(figsize=(12, 8))
+    fig, ax = plt.subplots(figsize=figsize)
     
     # Color palette
     colors = plt.cm.tab10(np.linspace(0, 1, len(relays)))
