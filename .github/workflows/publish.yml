@@ -1,12 +1,13 @@
 name: Upload Python Package
 
-# 1. Mengubah pemicu agar berjalan otomatis saat push ke branch 'main'
 on:
   push:
     branches:
       - main 
 
 permissions:
+  # WAJIB: Izin ini diperlukan agar GitHub bisa meminta token identitas ke PyPI
+  id-token: write
   contents: read
 
 jobs:
@@ -23,13 +24,14 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install build twine
+        pip install build
         
-    - name: Build and Publish
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-      run: |
-        python -m build
-        # 2. Menambahkan --skip-existing untuk mencegah error jika versi belum diganti
-        twine upload --skip-existing dist/*
+    - name: Build package
+      run: python -m build
+          
+    - name: Publish to PyPI
+      # Menggunakan action resmi PyPI (lebih stabil daripada twine manual untuk Trusted Publishing)
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        # Menambahkan flag --skip-existing secara otomatis
+        skip-existing: true
