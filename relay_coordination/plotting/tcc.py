@@ -5,7 +5,9 @@ Generates ETAP-style TCC coordination curves
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import os
 from typing import List
+from matplotlib.ticker import ScalarFormatter
 
 
 def plot_tcc_curves(relays: List,  
